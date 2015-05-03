@@ -83,8 +83,9 @@ describe('Interaction', function() {
       var called, args;
       beforeEach(function() {
         interaction = new Interaction('DoInteraction', {
-          validation: function(data) {
+          validation: function(data, done) {
             args = data;
+            done();
           },
           execute: function(data, cb) {
             cb(null, 'success');
@@ -104,12 +105,33 @@ describe('Interaction', function() {
         });
       });
 
+      it('can be asynchronous', function(done) {
+        var successCalled = false,
+            doneMethod;
+        interaction = new Interaction('DoInteraction', {
+          validation: function(data, done) {
+            args = data;
+            doneMethod = done;
+          },
+          execute: function(data, cb) {
+            cb(null, 'success');
+          }
+        });
+
+        interaction().then(function(success) {
+          successCalled = true;
+          done();
+        });
+        expect(successCalled).to.eql(false);
+        doneMethod();
+      });
+
       describe('an errornous validation', function() {
         var executeCalled;
         beforeEach(function() {
           executeCalled = false;
           interaction = new Interaction('DoInteraction', {
-            validation: function(data) {
+            validation: function(data, done) {
               if (data.input !== 42) {
                 this.error('Invalid', 'input', 'Bad, bad, bad!');
               }
@@ -119,6 +141,7 @@ describe('Interaction', function() {
               if (data.field === 23) {
                 this.error(Interaction.INVALID, 'field', 'Not your thing, right?');
               }
+              done();
             },
             execute: function(data, cb) {
               executeCalled = true;
@@ -254,13 +277,14 @@ describe('Interaction', function() {
               type: 'string'
             }
           },
-          validation: function(data) {
+          validation: function(data, done) {
             if (data.foo === 'bar') {
               this.error('Invalid', 'foo', 'Foobar is not allowed.');
             }
             if (data.notDefined) {
               this.error('Invalid', 'notDefined', 'Should never be called, because it is filtered out.');
             }
+            done();
           },
           execute: function(data, cb) {
             cb(null, 'success');

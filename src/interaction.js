@@ -46,19 +46,23 @@ var Interaction = function(name, definition) {
     validateInputs(definition.inputs, data, validation);
 
     if (definition.validation) {
-      definition.validation.call(validation, data);
+      definition.validation.call(validation, data, startExecution);
+    } else {
+      startExecution();
     }
 
-    if (Object.keys(validation.errors).length === 0) {
-      definition.execute(data, function interactionCallback(err, data) {
-        if (err) {
-          deferred.reject(err);
-        } else {
-          deferred.resolve(data);
-        }
-      });
-    } else {
-      deferred.reject(new ValidationError(validation.errors));
+    function startExecution() {
+      if (Object.keys(validation.errors).length === 0) {
+        definition.execute(data, function interactionCallback(err, data) {
+          if (err) {
+            deferred.reject(err);
+          } else {
+            deferred.resolve(data);
+          }
+        });
+      } else {
+        deferred.reject(new ValidationError(validation.errors));
+      }
     }
 
     return deferred.promise;

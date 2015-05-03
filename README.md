@@ -65,15 +65,16 @@ var myCommand = new Interaction('DoStuff', {
 });
 ```
 
-Further it accepts a custom validation, that is called for every call of the command, before execute is called. If it adds an error, the call of execute will be prohibited:
+Further it accepts a custom validation, that is called for every call of the command, before execute is called. The validation can also query databases and stuff, and has to call done when it is finished, to allow such asynchronous behaviors. If it adds an error, the call of execute will be prohibited:
 
 ```javascript
 var Interaction = require('stage-director');
 var myCommand = new Interaction('DoStuff', {
-  validation: function(data) {
+  validation: function(data, done) {
     if (data.foo === 'bar') {
       this.errors(Interaction.INVALID, 'foo', 'Do not use bar for foo.')
     }
+    done();
   },
   execute: function(data, cb) {
     // do stuff here…
