@@ -1,5 +1,6 @@
 
 var Q = require('q');
+var schema = require('validate');
 
 var ValidationError = function ValidationError(errors) {
   this.type = 'ValidationError';
@@ -7,7 +8,28 @@ var ValidationError = function ValidationError(errors) {
   this.errors = errors;
 };
 
-module.exports = function(name, definition) {
+function definitionSchema(inputs) {
+  var key, msg;
+
+  for (key in inputs) {
+    msg = inputs[key].message;
+    inputs[key].message = key + '||' + (msg || key + ' is invalid.');
+  }
+
+  return schema(inputs);
+}
+
+function validateInputs(inputs, data, validation) {
+  if (!inputs) { return []; }
+
+  var errors = definitionSchema(inputs).validate(data);
+  errors.forEach(function(msg) {
+    msg = msg.split('||');
+    validation.error(Interaction.INVALID, msg[0], msg[1]);
+  });
+}
+
+var Interaction = function(name, definition) {
   var interaction = function(data) {
     var deferred = Q.defer(),
         validation = {
@@ -20,6 +42,8 @@ module.exports = function(name, definition) {
       }
       this.errors[field].push({ type: type, message: message });
     };
+
+    validateInputs(definition.inputs, data, validation);
 
     if (definition.validation) {
       definition.validation.call(validation, data);
@@ -45,8 +69,7 @@ module.exports = function(name, definition) {
   return interaction;
 };
 
+Interaction.ValidationError = ValidationError;
+Interaction.INVALID = 'Invalid';
 
-module.exports.ValidationError = ValidationError;
-module.exports.INVALID = 'Invalid';
-
-
+module.exports = Interaction;

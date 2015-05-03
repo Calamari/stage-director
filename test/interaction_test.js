@@ -82,7 +82,7 @@ describe('Interaction', function() {
     describe('custom made', function() {
       var called, args;
       beforeEach(function() {
-        interaction = new Interaction('CustomValidation', {
+        interaction = new Interaction('DoInteraction', {
           validation: function(data) {
             args = data;
           },
@@ -108,7 +108,7 @@ describe('Interaction', function() {
         var executeCalled;
         beforeEach(function() {
           executeCalled = false;
-          interaction = new Interaction('CustomValidation', {
+          interaction = new Interaction('DoInteraction', {
             validation: function(data) {
               if (data.input !== 42) {
                 this.error('Invalid', 'input', 'Bad, bad, bad!');
@@ -167,6 +167,135 @@ describe('Interaction', function() {
 
             done();
           });
+        });
+      });
+    });
+
+    describe('build in input validation', function() {
+      var called, args;
+      beforeEach(function() {
+        args = null;
+        interaction = new Interaction('DoInteraction', {
+          inputs: {
+            name: {
+              type: 'string',
+              required: true
+            },
+            email: {
+              type: 'string',
+              match: /.+\@.+\..+/,
+              message: 'email must contain an @'
+            },
+            age: {
+              type: 'number'
+            }
+          },
+          execute: function(data, cb) {
+            args = data;
+            cb(null, 'success');
+          }
+        });
+      });
+
+      it('does call execute if everything is like it should', function(done) {
+        interaction({ name: 'Bob', email: 'a@b.cd' }).then(function() {
+          done();
+        });
+      });
+
+      it('filters out input fields that are not specified', function() {
+        interaction({ name: 'Bob', email: 'a@b.cd', foo: 'bar' });
+        expect(args).to.only.have.keys('name', 'email');
+      });
+
+      it('returns validation error if one field does not match', function(done) {
+        interaction({ email: 'a@b' }).fail(function(err) {
+          expect(err).to.be.a(Interaction.ValidationError);
+          expect(err.type).to.eql('ValidationError');
+          expect(err.validationError).to.be(true);
+
+          done();
+        });
+      });
+
+      it('return error if type does not match', function(done) {
+        interaction({ age: '42' }).fail(function(err) {
+          expect(err.errors).to.have.key('age');
+
+          done();
+        });
+      });
+
+      it('can access the given errors like in custom validation', function(done) {
+        interaction({ email: 32 }).fail(function(err) {
+          expect(Object.keys(err.errors)).to.have.length(2);
+          expect(err.errors.name).to.have.length(1);
+          expect(err.errors.name[0].type).to.eql('Invalid');
+          expect(err.errors.name[0].message).to.eql('name is invalid.');
+
+          expect(err.errors.email).to.have.length(1);
+          expect(err.errors.email[0].type).to.eql('Invalid');
+          expect(err.errors.email[0].message).to.eql('email must contain an @');
+
+          done();
+        });
+      });
+    });
+
+    describe('combined build in and custom validation', function() {
+      beforeEach(function() {
+        interaction = new Interaction('DoInteraction', {
+          inputs: {
+            name: {
+              type: 'string',
+              required: true
+            },
+            foo: {
+              type: 'string'
+            }
+          },
+          validation: function(data) {
+            if (data.foo === 'bar') {
+              this.error('Invalid', 'foo', 'Foobar is not allowed.');
+            }
+            if (data.notDefined) {
+              this.error('Invalid', 'notDefined', 'Should never be called, because it is filtered out.');
+            }
+          },
+          execute: function(data, cb) {
+            cb(null, 'success');
+          }
+        });
+      });
+
+      it('does call execute if bot validations pass', function(done) {
+        interaction({ name: 'Bob', email: 'a@b.cd' }).then(function() {
+          done();
+        });
+      });
+
+      it('returns validation error if one field does not match', function(done) {
+        interaction({ name: '' }).fail(function(err) {
+          expect(err).to.be.a(Interaction.ValidationError);
+          expect(err.type).to.eql('ValidationError');
+          expect(err.validationError).to.be(true);
+
+          done();
+        });
+      });
+
+      it('can access the given errors like in custom validation', function(done) {
+        interaction({ name: '', foo: 'bar', notDefined: 'yes' }).fail(function(err) {
+          expect(err.errors).to.only.have.keys(['name', 'foo']);
+          expect(err.errors.name).to.have.length(1);
+          expect(err.errors.name[0].type).to.eql('Invalid');
+          expect(err.errors.name[0].message).to.eql('name is invalid.');
+
+          expect(err.errors.foo).to.have.length(1);
+          expect(err.errors.foo[0].type).to.eql('Invalid');
+          expect(err.errors.foo[0].message).to.eql('Foobar is not allowed.');
+
+          done();
         });
       });
     });
