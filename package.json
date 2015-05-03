@@ -14,7 +14,7 @@
     "expect.js": "^0.3.1",
     "mocha": "^2.1.0"
   },
-  "version": "0.0.1",
+  "version": "0.1.0",
   "main": "index.js",
   "scripts": {
     "test": "./node_modules/.bin/mocha -w test/**"
