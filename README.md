@@ -72,7 +72,7 @@ var Interaction = require('stage-director');
 var myCommand = new Interaction('DoStuff', {
   validation: function(data, done) {
     if (data.foo === 'bar') {
-      this.errors(Interaction.INVALID, 'foo', 'Do not use bar for foo.')
+      this.error(Interaction.INVALID, 'foo', 'Do not use bar for foo.')
     }
     done();
   },
